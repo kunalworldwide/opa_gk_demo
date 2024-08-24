@@ -1,0 +1,49 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8spolicies
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sPolicies
+      validation:
+        openAPIV3Schema:
+          properties:
+            allowedRegistries:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8spolicies
+
+        violation[{"msg": msg}] {
+          input.review.object.metadata.namespace == "default"
+          msg := "🚫 Creation of resources in the 'default' namespace is prohibited! 🚷"
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          image := container.image
+          not registry_allowed(image)
+          msg := sprintf("🚫 Images can only be pulled from %v! 📦", [input.parameters.allowedRegistries])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.resources.limits.cpu
+          msg := "🚫 Containers must have resource limits set for CPU! ⚙️"
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.template.spec.containers[_]
+          not container.resources.limits.memory
+          msg := "🚫 Containers must have resource limits set for memory! 🧠"
+        }
+
+        registry_allowed(image) {
+          registry := input.parameters.allowedRegistries[_]
+          startswith(image, registry)
+        }

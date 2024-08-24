@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    createdby: kunal
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: good-nginx
+  namespace: production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: good-nginx
+  template:
+    metadata:
+      labels:
+        app: good-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: docker.io/nginx:1.21.6
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: good-nginx-service
+  namespace: production
+spec:
+  selector:
+    app: good-nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: NodePort
